@@ -1,0 +1,15 @@
+﻿services:
+  - type: web
+    name: farmerbot-ai
+    runtime: python
+    plan: free
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: python chatbot.py
+    healthCheckPath: / # Or whatever path Gradio is serving
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.12.1
+      - key: GRADIO_SERVER_NAME # Ensure Gradio listens on all interfaces
+        value: "0.0.0.0"

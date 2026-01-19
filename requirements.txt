@@ -1,0 +1,13 @@
+gradio>=5.0.0
+langchain-huggingface
+sentence-transformers
+flashrank
+rank_bm25
+langchain-google-genai>=4.1.3
+langchain-chroma>=1.1.0
+pypdf>=6.5.0
+gradio>=5.25.1
+python-dotenv>=1.1.0
+langchain>=1.2.2
+langchain-classic>=1.0.1
+langchain-community>=0.3.21
