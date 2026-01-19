@@ -1,6 +1,9 @@
 import os
 import shutil
+import stat
 from dotenv import load_dotenv
+
+# Core LangChain 2026 Imports
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -8,41 +11,74 @@ from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 
 load_dotenv()
 
+def remove_readonly(func, path, excinfo):
+    """Handles Windows PermissionError by clearing the readonly bit."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
 def build_db():
-    print("🚀 Starting PDF Ingestion with LOCAL Embeddings...")
+    print("🚀 Starting Batch PDF Ingestion...")
     
-    # Path settings
-    # Note: Using DirectoryLoader will find all PDFs, but we check for farmerbook.pdf specifically first
-    pdf_path = os.path.join("data", "farmerbook.pdf")
+    data_dir = "data"
     db_path = "chroma_db"
     
-    if not os.path.exists(pdf_path):
-        print(f"❌ Error: {pdf_path} not found! Please ensure your PDF is in the 'data' folder.")
+    # 1. Check if the data folder exists and has PDFs
+    if not os.path.exists(data_dir):
+        print(f"❌ Error: Folder '{data_dir}' not found!")
         return
+    
+    pdf_files = [f for f in os.listdir(data_dir) if f.endswith('.pdf')]
+    if not pdf_files:
+        print(f"❌ No PDF files found in '{data_dir}'.")
+        return
+    
+    print(f"📂 Found {len(pdf_files)} PDFs: {', '.join(pdf_files)}")
 
-    # 1. Clean old database if it exists
+    # 2. Clean old database (Standard procedure for fresh re-indexing)
     if os.path.exists(db_path):
         print("🧹 Cleaning old database...")
-        shutil.rmtree(db_path)
+        try:
+            shutil.rmtree(db_path, onerror=remove_readonly)
+        except Exception as e:
+            print(f"⚠️ Manual action required: Delete the '{db_path}' folder. Reason: {e}")
+            return
 
-    # 2. Load documents
-    # Fixed Indentation here
-    print("📄 Loading PDFs...")
-    loader = DirectoryLoader('data/', glob="./*.pdf", loader_cls=PyPDFLoader)
-    docs = loader.load()
+    # 3. Load ALL documents from the directory
+    print("📄 Loading all documents...")
+    # The DirectoryLoader will now iterate through every .pdf in the folder
+    loader = DirectoryLoader(
+        data_dir, 
+        glob="./*.pdf", 
+        loader_cls=PyPDFLoader,
+        show_progress=True
+    )
     
-    # 3. Split Text
-    # Fixed variable name from 'pages' to 'docs' to match the loader output
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
+    try:
+        docs = loader.load()
+        print(f"✅ Loaded {len(docs)} pages from {len(pdf_files)} files.")
+    except Exception as e:
+        print(f"❌ Error during loading: {e}")
+        return
+    
+    # 4. Split Text into Semantic Chunks
+    # Using a slightly smaller overlap for better diversity across multiple documents
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800, 
+        chunk_overlap=80,
+        add_start_index=True
+    )
     chunks = splitter.split_documents(docs)
-    print(f"✂️ Split into {len(chunks)} chunks.")
+    print(f"✂️ Created {len(chunks)} chunks.")
 
-    # 4. Initialize Local Embeddings
-    print("🧠 Initializing local embedding model (all-MiniLM-L6-v2)...")
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # 5. Initialize Embeddings (Sentence Transformers)
+    print("🧠 Initializing embedding model...")
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={'device': 'cpu'}
+    )
     
-    # 5. Build and Persist Vector Store
-    print("📡 Building Vector Store... (This may take a minute depending on your CPU)")
+    # 6. Build Vector Store
+    print("📡 Indexing chunks into ChromaDB... Please wait.")
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
@@ -50,7 +86,7 @@ def build_db():
         collection_name="farmer_kb"
     )
 
-    print(f"✅ SUCCESS: Database built successfully in '{db_path}'!")
+    print(f"🏁 SUCCESS: All {len(pdf_files)} PDFs are indexed in '{db_path}'!")
 
 if __name__ == "__main__":
     build_db()
