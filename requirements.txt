@@ -1,0 +1,13 @@
+langchain>=1.2.6
+langchain-community>=0.4.1
+langchain-core>=1.2.7
+langchain-classic>=1.0.1
+langchain-google-genai>=4.2.0
+langchain-huggingface>=1.2.0
+langchain-chroma>=1.1.0
+sentence-transformers>=3.0.0
+flashrank>=0.2.10
+rank_bm25>=0.2.2
+gradio>=6.3.0
+pypdf>=6.6.0
+python-dotenv>=1.2.1
