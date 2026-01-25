@@ -1,0 +1,8 @@
+Summary of Resources for your Project
+Textual Knowledge: ICAR KRISHI (PDFs/Research papers).
+
+Structured Steps: TNAU AgriTech (Step-by-step cultivation).
+
+Live Facts: API Setu (Mandi prices & Soil health).
+
+Farmer Voice: data.gov.in (Search for "Agriculture" datasets).
